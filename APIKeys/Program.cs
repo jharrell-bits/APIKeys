@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<APIKeysDB>(opt => opt.UseInMemoryDatabase("APIKeys"));
 
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c => {
@@ -52,7 +53,8 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
-app.UseMiddleware<APIKeyMiddleware>();
+// To use Middleware to check all request for the API Key, uncomment this line
+// app.UseMiddleware<APIKeyMiddleware>();
 
 app.MapControllers();
 

@@ -1,9 +1,12 @@
 ﻿using APIKeys.Data;
-using APIKeys.Models;
 using System.Net;
 
 namespace APIKeys.Utilities
 {
+    /// <summary>
+    /// This class is Middleware that inspects the HTTP Request for an API Key. If a valid API Key is not found, it returns a 401.
+    /// NOTE: for larger applications, caching should be implemented to improve performance.
+    /// </summary>
     public class APIKeyMiddleware
     {
         private readonly RequestDelegate _requestDelegate;
@@ -15,8 +18,8 @@ namespace APIKeys.Utilities
 
         public async Task InvokeAsync(HttpContext httpContext)
         {
-            var apiKeyIsValid = false;
-            var apiKeyIsExpired = false;
+            // assume the API Key is invalid
+            var apiKeyStatus = APIKeyChecker.APIKeyStatus.Invalid;
 
             // make sure there is an X-API-KEY header
             if (httpContext.Request.Headers.ContainsKey("X-API-KEY"))
@@ -24,49 +27,31 @@ namespace APIKeys.Utilities
                 // use the global ServiceCollection to get the DBContext that this method needs
                 var apiKeysDB = httpContext.RequestServices.GetService(typeof(APIKeysDB)) as APIKeysDB;
 
-                if (apiKeysDB != null)
-                {
-                    // grap the X-API-KEY value
-                    var apiKey = httpContext.Request.Headers["X-API-KEY"];
+                // grap the X-API-KEY value from the header. We've already confirmed that it exists.
+                var apiKey = httpContext.Request.Headers["X-API-KEY"];
 
-                    // search the DB for a matching API Key
-                    // NOTE: if the application uses Authentication (Identity, OAuth2.0, etc), filter on the user id also
-                    var matchingApiKey = apiKeysDB.APIKeys.FirstOrDefault(f => f.Key == apiKey);
-
-                    // Found a matching key
-                    if (matchingApiKey != null)
-                    {
-                        // make sure the key is not expired
-                        if (matchingApiKey.ExpiresDateTime < DateTime.UtcNow)
-					    {
-                            // If API Key is expired, we will notify the user
-                            apiKeyIsExpired = true;
-                        }
-                        else
-                        {
-                            // API Key is valid
-                            apiKeyIsValid = true;
-                        }
-                    }
-                }
+                // determine the API Key status
+                apiKeyStatus = APIKeyChecker.CheckAPIKeyStatus(apiKey, apiKeysDB);
             }
 
-            // if the API Key is invalid, return a 401
-            if (!apiKeyIsValid)
+            // if the API Key is invalid, return a 401 with an "Unauthorized" message
+            if (apiKeyStatus == APIKeyChecker.APIKeyStatus.Invalid)
             {
                 httpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
                 httpContext.Response.ContentType = "text/plain";
-
-                if (apiKeyIsExpired)
-                {
-                    await httpContext.Response.WriteAsync("API Key Expired");
-                }
-                else
-                {
-                    await httpContext.Response.WriteAsync("Unauthorized");
-                }
+                await httpContext.Response.WriteAsync("Unauthorized");
+                return;
+            }
+            // if the API Key is expired, return a 401 with an "API Key Expired" message
+            else if (apiKeyStatus == APIKeyChecker.APIKeyStatus.Expired)
+            {
+                httpContext.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                httpContext.Response.ContentType = "text/plain";
+                await httpContext.Response.WriteAsync("API Key Expired");
+                return;
             }
 
+            // continue processing the request
             await _requestDelegate(httpContext);
         }
     }

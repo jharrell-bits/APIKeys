@@ -18,9 +18,10 @@ namespace APIKeys.Controllers
             _apiKeysDB = apiKeysDB;
         }
 
-        [HttpGet(Name = "RequestNewAPIKey")]
-        public async Task<string> RequestNewAPIKey()
+        [HttpGet]
+        public async Task<string> Get()
         {
+            // the API Key should be unique... we'll just use a GUID
             var apiKey = Guid.NewGuid().ToString();
 
             var newAPIKey = new APIKey()
@@ -28,8 +29,10 @@ namespace APIKeys.Controllers
                 Key = apiKey,
                 CreatedDateTime = DateTime.UtcNow,
                 ExpiresDateTime = DateTime.UtcNow.AddDays(90)
-                // to request an APIKey, the user should be authenticated (via Identity, OAuth2.0, etc); grab the User Id and assign it here
-                // TODO: something like: AssignedUserId = IHttpContextAccessor.HttpContext.User.Identity.Name;
+
+                // to request an APIKey, the user should already be authenticated (via Identity, OAuth2.0, etc)
+                // In a real world application, use the Authorization infrastructure to lookup a User Id and assign it here
+                // TODO: AssignedUserId = IHttpContextAccessor.HttpContext.User.Identity.Name;
             };
 
             _apiKeysDB.Add(newAPIKey);

@@ -1,5 +1,4 @@
-﻿using APIKeys.Data;
-using APIKeys.Models;
+﻿using APIKeys.Models;
 using APIKeys.Utilities;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,7 +19,7 @@ namespace APIKeys.Controllers
             _logger = logger;
         }
 
-        [HttpGet(Name = "GetGadgets")]
+        [HttpGet]
         public IEnumerable<Gadget> Get()
         {
             return new List<Gadget>(){new Gadget()
